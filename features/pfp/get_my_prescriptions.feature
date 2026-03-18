@@ -75,3 +75,10 @@ Feature: I can see my prescriptions via PFP Proxygen
 # #   Then I am an authorised prescriber with EPS-FHIR app
 # #   And I validate the response for FHIR compliance
 # #   And the response indicates a success
+
+  # Ensuring Stacey Twitchett (EPSAT default prescribee) doesn't break dev by timeout
+  @only-dev @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-6089
+  Scenario: Stacey Twitchett can view prescriptions
+    When I am authenticated with PFP-PROXYGEN app
+    And I request prescriptions for NHS number '9449304130'
+    Then I can see '25' of my prescriptions
