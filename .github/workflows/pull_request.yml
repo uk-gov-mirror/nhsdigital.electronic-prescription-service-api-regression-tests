@@ -53,7 +53,7 @@ jobs:
       id: "Pull Request Basic Regression Tests"
   tag_release:
     needs: [get_asdf_version]
-    uses: NHSDigital/eps-common-workflows/.github/workflows/tag-release.yml@383f3f9eaf3cb553ebcd74897bfed4d5e387629e
+    uses: NHSDigital/eps-common-workflows/.github/workflows/tag-release.yml@5ac2707dd9cd60ad127275179495b9c890d74711
     with:
       dry_run: true
       asdfVersion: ${{ needs.get_asdf_version.outputs.asdf_version }}
