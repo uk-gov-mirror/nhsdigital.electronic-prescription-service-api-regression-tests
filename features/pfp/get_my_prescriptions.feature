@@ -2,12 +2,18 @@
 Feature: I can see my prescriptions via PFP Proxygen
 
   @blocker @smoke @e2e @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-4222
-  Scenario: I can see a single prescription
+  Scenario Outline: I can see a single prescription
     Given I am an authorised prescriber with EPS-FHIR-PRESCRIBING app
-    And I successfully prepare and sign a prescription
+    And I successfully prepare and sign a <Nomination> <Type> prescription
     When I am authenticated with PFP-PROXYGEN app
     And I request my prescriptions
     Then I can see my prescription
+    Examples:
+      | Nomination    | Type   |
+      | nominated     | acute  |
+      | non-nominated | acute  |
+      | nominated     | repeat |
+      | non-nominated | repeat |
 
   @blocker @smoke @e2e @service-search
   Scenario: I can see a single prescription released to a distance selling pharmacy
