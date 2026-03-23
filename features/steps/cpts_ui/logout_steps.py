@@ -1,8 +1,8 @@
 # pylint: disable=no-name-in-module
 from behave import given, when, then  # pyright: ignore [reportAttributeAccessIssue]
 from playwright.sync_api import expect
-
 from pages.logout import Logout
+from time import sleep
 
 ###############################################################################
 # GIVEN
@@ -28,6 +28,7 @@ def given_on_logout_successful_page(context):
     expect(logout_page.logout_page_heading).to_be_visible()
     expect(logout_page.logout_page_content).to_be_visible()
     expect(logout_page.logout_page_login_link).to_be_visible()
+    sleep(2)  # Ensure the logout marker is no longer valid. Simulate a human interaction.
 
 
 ###############################################################################
