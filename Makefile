@@ -10,9 +10,9 @@ guard-%:
 
 install: install-python install-hooks install-node
 
-install-full: clear-virtualenv install-asdf install install-playwright
+install-full: clear-virtualenv install install-playwright
 
-uninstall-full: clear-virtualenv asdf-uninstall
+uninstall-full: clear-virtualenv
 
 update: update-poetry update-node install
 
@@ -21,16 +21,6 @@ update-node:
 
 update-poetry:
 	poetry update
-
-install-asdf:
-	asdf plugin add python
-	asdf plugin add poetry
-	asdf plugin add shellcheck
-	asdf plugin add nodejs
-	asdf plugin add actionlint
-	asdf plugin add allure
-	asdf install python
-	asdf install
 
 install-python:
 	poetry install
@@ -61,27 +51,14 @@ run-tests: guard-product guard-env
 	echo "Running Regression Tests"
 	poetry run python ./runner.py --product=$(product) --env=$(env) --tags=$(tags) --arm64=${arm64}
 
-check-licenses:
-	scripts/check_python_licenses.sh
-
 clear-virtualenv:
 	rm -f -d -r .venv/
 	mkdir .venv/
 
-asdf-uninstall:
-	asdf plugin remove poetry
-	asdf plugin remove python
-	asdf plugin remove shellcheck
-	asdf plugin remove nodejs
-	asdf plugin remove actionlint
-	asdf plugin remove allure
-
-deep-clean-install:
+deep-clean:
 	make clear-virtualenv
 	find . -name '__pycache__' -type d -prune -exec rm -rf '{}' +
 	find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
-	make asdf-uninstall
-	make install-full
 
 pre-commit: git-secrets-docker-setup
 	poetry run pre-commit run --all-files

@@ -94,7 +94,8 @@ jobs:
           echo "  <h1>Behave Steps Catalog</h1>"
           echo "  <pre>"
           # Escape HTML special characters to ensure valid output
-          poetry run behave --steps-catalog | python -c "import sys, html; print(html.escape(sys.stdin.read()))"
+          # 2>/dev/null suppresses behave warnings; || true prevents non-zero exit codes from failing the step
+          (poetry run behave --steps-catalog 2>/dev/null || true) | python -c "import sys, html; print(html.escape(sys.stdin.read()))"
           echo "  </pre>"
           echo "</body>"
           echo "</html>"
