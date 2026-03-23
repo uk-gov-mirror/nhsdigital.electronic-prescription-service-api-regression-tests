@@ -335,6 +335,12 @@ When I send a &#x27;{coding}&#x27; update with a status of &#x27;{status}&#x27;
 
 When I send a &#x27;{coding}&#x27; update
 
+When I send a &#x27;{coding}&#x27; post-dated update
+    Send a post-dated status update with lastModified timestamp in the future.
+
+When I advance the clock to beyond the post-dated time
+    Poll the API until the post-dated time has passed and status update takes effect.
+
 Then I am on the change role page
 
 Then I see the change role roles without access table
@@ -696,6 +702,8 @@ Then I validate the prescription matches my prepared prescription
 Then I process the status updates for the prescription items and verify they are returned
 
 Then The prescription item has a coding of &#x27;{expected_coding}&#x27; with a status of &#x27;{expected_status}&#x27;
+
+Then &#x27;{expected_count:d}&#x27; updates are returned from get-status-updates endpoint
 
 Given I can see the prescription details with the correct issue details
  When I can see the prescription details with the correct issue details
