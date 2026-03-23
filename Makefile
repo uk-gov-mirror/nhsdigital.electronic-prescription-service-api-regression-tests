@@ -1,6 +1,6 @@
 project_name = electronic-prescription-service-api-regression-tests
 
-.PHONY: test
+.PHONY: test install lint
 
 guard-%:
 	@ if [ "${${*}}" = "" ]; then \
@@ -96,9 +96,5 @@ download-allure-report: guard-GITHUB_RUN_ID
 	gh run download ${GITHUB_RUN_ID}
 	allure generate
 	allure open
-
-aws-configure:
-	aws configure sso --region eu-west-2
-
-aws-login:
-	aws sso login --sso-session sso-session
+%:
+	@$(MAKE) -f /usr/local/share/eps/Mk/common.mk $@
