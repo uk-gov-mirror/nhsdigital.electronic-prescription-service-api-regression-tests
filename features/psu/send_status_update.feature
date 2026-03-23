@@ -2,7 +2,7 @@
 @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-4222
 Feature: I can send an update to PSU
 
-  @blocker @smoke
+  @blocker @smoke @update
   Scenario: I can send a 'With Pharmacy' update to PSU
     Given I am authorised to send prescription updates
     When I send a 'With Pharmacy' update
