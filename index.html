@@ -84,6 +84,8 @@ Given a {nomination} {prescription_type} prescription has been created and relea
 
 Given a {nomination} {prescription_type} prescription has been created and released using {deployment_method} apis
 
+Given a {nomination} {prescription_type} prescription has been created, released and dispensed using {deployment_method} apis
+
 Given the prescription has been released using {deployment_method} apis
 
 Given a new prescription has been dispensed
@@ -310,6 +312,8 @@ When I send a Dispense Notification with a line item status of &quot;{line_item_
 When I amend the dispense notification
 
 When I withdraw the dispense notification
+
+When I submit a claim for the prescription
 
 When I make a {validity} request to the {product} validator endpoint with show validation set to {show_validation}
 
@@ -666,6 +670,12 @@ Then I can see the prescription not found message
 Then I can see the missing required path parameter message
 
 Then the response body indicates a successful {action_type} action
+
+Then the response body indicates a successful claim
+
+Then the response body indicates the claim is invalid
+
+Then the response body returns &quot;{severity}&quot;: &quot;{issue_code}&quot;
 
 Then I can see an informational operation outcome in the response
 
