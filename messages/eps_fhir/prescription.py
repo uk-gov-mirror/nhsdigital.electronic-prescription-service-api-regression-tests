@@ -4,6 +4,10 @@ from uuid import uuid4
 import datetime
 
 from features.environment import CIS2_USERS
+from messages.eps_fhir.common_maps import (
+    ERD_DEFAULT_REPEATS_ALLOWED,
+    ERD_DEFAULT_REPEATS_ISSUED,
+)
 from utils.prescription_id_generator import generate_short_form_id
 
 
@@ -25,6 +29,8 @@ class PrescriptionValues:
         self.intent = context.intent
         self.type_code = context.type_code
         self.nhs_number = context.nhs_number
+        self.number_of_repeats_issued = getattr(context, "number_of_repeats_issued", ERD_DEFAULT_REPEATS_ISSUED)
+        self.number_of_repeats_allowed = getattr(context, "number_of_repeats_allowed", ERD_DEFAULT_REPEATS_ALLOWED)
 
         self.user_id = CIS2_USERS["prescriber"]["user_id"]
         self.sds_role_id = CIS2_USERS["prescriber"]["role_id"]
@@ -213,7 +219,9 @@ class Prescription:
         }
 
         if self.values.type_code == "continuous-repeat-dispensing":
-            medication_request["resource"]["dispenseRequest"].update({"numberOfRepeatsAllowed": 6})
+            medication_request["resource"]["dispenseRequest"].update(
+                {"numberOfRepeatsAllowed": self.values.number_of_repeats_allowed}
+            )
             medication_request["resource"]["courseOfTherapyType"]["coding"][0].update(
                 {
                     "system": "https://fhir.nhs.uk/CodeSystem/medicationrequest-course-of-therapy",
@@ -221,6 +229,25 @@ class Prescription:
                     "display": "Continuous long term (repeat dispensing)",
                 }
             )
+            medication_request["resource"]["basedOn"] = [
+                {
+                    "extension": [
+                        {
+                            "url": "https://fhir.nhs.uk/StructureDefinition/Extension-EPS-RepeatInformation",
+                            "extension": [
+                                {
+                                    "url": "numberOfRepeatsAllowed",
+                                    "valueInteger": self.values.number_of_repeats_allowed,
+                                },
+                                {
+                                    "url": "numberOfRepeatsIssued",
+                                    "valueInteger": self.values.number_of_repeats_issued,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ]
 
         if self.values.nomination_code == "P1":
             medication_request["resource"]["dispenseRequest"].update(

@@ -17,6 +17,7 @@ from methods.api.eps_api_methods import (
     try_prepare_prescription,
     release_signed_prescription,
     return_prescription,
+    submit_claim,
     withdraw_dispense_notification,
     call_validator,
 )
@@ -24,10 +25,34 @@ from methods.shared.common import assert_that, get_auth
 from features.environment import APIGEE_APPS
 from utils.random_nhs_number_generator import generate_single
 from messages.eps_fhir.prescription import Prescription
-from messages.eps_fhir.common_maps import THERAPY_TYPE_MAP, INTENT_MAP
+from messages.eps_fhir.common_maps import (
+    THERAPY_TYPE_MAP,
+    INTENT_MAP,
+    ERD_DEFAULT_REPEATS_ALLOWED,
+    ERD_DEFAULT_REPEATS_ISSUED,
+)
 from messages.eps_fhir.dispense_notification import DNProps
 
 logger = logging.getLogger(__name__)
+
+
+def _get_scenario_outline_value(context, column_name):
+    active_outline = getattr(context, "active_outline", None)
+    if not active_outline:
+        return None
+
+    try:
+        return active_outline[column_name]
+    except (KeyError, TypeError):
+        pass
+
+    headings = getattr(active_outline, "headings", [])
+    cells = getattr(active_outline, "cells", [])
+    for heading, cell in zip(headings, cells):
+        if heading == column_name:
+            return cell
+
+    return None
 
 
 def setup_new_prescription(context, nomination, prescription_type, generate_nhs_number=True):
@@ -40,6 +65,11 @@ def setup_new_prescription(context, nomination, prescription_type, generate_nhs_
     context.prescription_type = prescription_type
     context.type_code = THERAPY_TYPE_MAP[prescription_type]["code"]
     context.intent = INTENT_MAP[prescription_type]
+    # Default to detail placement unless a scenario variation overrides it.
+    context.claim_repeat_info_location = None
+    if prescription_type == "eRD":
+        context.number_of_repeats_issued = ERD_DEFAULT_REPEATS_ISSUED
+        context.number_of_repeats_allowed = ERD_DEFAULT_REPEATS_ALLOWED
 
 
 @step("I successfully prepare and sign a prescription")
@@ -100,6 +130,30 @@ def a_prescription_has_been_created_and_released(context, nomination, prescripti
     context.execute_steps(f"""
         Given a {nomination} {prescription_type} prescription has been created using {deployment_method} apis
         And the prescription has been released using {deployment_method} apis
+        """)
+
+
+@given(
+    "a {nomination} {prescription_type} prescription has been created, released and dispensed "
+    "using {deployment_method} apis"
+)
+def a_prescription_has_been_created_released_and_dispensed(context, nomination, prescription_type, deployment_method):
+    if "sandbox" in context.config.userdata["env"].lower():
+        return
+
+    variation = _get_scenario_outline_value(context, "Variation")
+    if isinstance(variation, str):
+        variation = variation.strip()
+    context.claim_repeat_info_location = variation or None
+
+    create_and_release_step = (
+        f"Given a {nomination} {prescription_type} prescription has been created "
+        f"and released using {deployment_method} apis"
+    )
+
+    context.execute_steps(f"""
+        {create_and_release_step}
+        When I dispense the prescription
         """)
 
 
@@ -314,6 +368,13 @@ def i_withdraw_the_dispense_notification(context):
     withdraw_dispense_notification(context)
 
 
+@when("I submit a claim for the prescription")
+def i_submit_a_claim_for_the_prescription(context):
+    if "sandbox" in context.config.userdata["env"].lower():
+        return
+    submit_claim(context)
+
+
 @then("the response body indicates a successful {action_type} action")
 def body_indicates_successful_action(context, action_type):
     if "sandbox" in context.config.userdata["env"].lower():
@@ -341,6 +402,12 @@ def body_indicates_successful_action(context, action_type):
     def _return_assertion():
         i_can_see_an_informational_operation_outcome_in_the_response(context)
 
+    def _claim_assertion():
+        i_can_see_an_informational_operation_outcome_in_the_response(context)
+        assert_that(json_response).contains_key("meta")
+        assert_that(json_response["meta"]).contains_key("lastUpdated")
+        assert_that(json_response["meta"]["lastUpdated"]).is_not_none().is_not_empty()
+
     json_response = json.loads(context.response.content)
     action_assertions = {
         "cancel": [_cancel_assertion],
@@ -349,8 +416,63 @@ def body_indicates_successful_action(context, action_type):
         "dispense withdrawal": [_withdraw_dispense_notification_assertion],
         "release": [_release_assertion],
         "return": [_return_assertion],
+        "claim": [_claim_assertion],
     }
     [assertion() for assertion in action_assertions.get(action_type, [])]
+
+
+@then("the response body indicates a successful claim")
+def body_indicates_successful_claim(context):
+    body_indicates_successful_action(context, "claim")
+
+
+def _assert_operation_outcome_has_issues_of_severity(context, expected_issue_count, severity):
+    json_response = json.loads(context.response.content)
+    logger.debug(
+        "OperationOutcome response (status=%s): %s",
+        getattr(context.response, "status_code", "unknown"),
+        json.dumps(json_response, indent=2, sort_keys=True),
+    )
+    assert_that(json_response["resourceType"]).is_equal_to("OperationOutcome")
+    issue_count = sum(issue.get("severity") == severity for issue in json_response.get("issue", []))
+    if expected_issue_count == "many":
+        assert_that(issue_count).is_greater_than(0)
+    else:
+        assert_that(issue_count).is_equal_to(int(expected_issue_count))
+
+
+def _assert_operation_outcome_has_issue_with_severity_and_code(context, severity, issue_code):
+    json_response = json.loads(context.response.content)
+    logger.debug(
+        "OperationOutcome response (status=%s): %s",
+        getattr(context.response, "status_code", "unknown"),
+        json.dumps(json_response, indent=2, sort_keys=True),
+    )
+    assert_that(json_response["resourceType"]).is_equal_to("OperationOutcome")
+    issue_count = sum(
+        issue.get("severity") == severity
+        and any(coding.get("code") == issue_code for coding in issue.get("details", {}).get("coding", []))
+        for issue in json_response.get("issue", [])
+    )
+    assert_that(issue_count).is_greater_than(0)
+
+
+@then("the response body indicates the claim is invalid")
+def body_indicates_invalid_claim(context):
+    if "sandbox" in context.config.userdata["env"].lower():
+        return
+    _assert_operation_outcome_has_issue_with_severity_and_code(
+        context,
+        "error",
+        "PRESCRIPTION_INVALID_STATE_TRANSITION",
+    )
+
+
+@then('the response body returns "{severity}": "{issue_code}"')
+def body_returns_severity_and_code(context, severity, issue_code):
+    if "sandbox" in context.config.userdata["env"].lower():
+        return
+    _assert_operation_outcome_has_issue_with_severity_and_code(context, severity, issue_code)
 
 
 @then("I can see an informational operation outcome in the response")
@@ -383,13 +505,7 @@ def i_make_a_request_to_the_validator_endpoint_with_file(context, filename, prod
 
 @then("the validator response has {expected_issue_count} {issue_type} issue")
 def validator_response_has_n_issues_of_type(context, expected_issue_count, issue_type):
-    json_response = json.loads(context.response.content)
-    assert_that(json_response["resourceType"]).is_equal_to("OperationOutcome")
-    actual_issue_count = sum(p["severity"] == issue_type for p in json_response["issue"])
-    if expected_issue_count == "many":
-        assert_that(actual_issue_count).is_greater_than(0)
-    else:
-        assert_that(int(expected_issue_count)).is_equal_to(actual_issue_count)
+    _assert_operation_outcome_has_issues_of_severity(context, expected_issue_count, issue_type)
 
 
 @then("the validator response has error with diagnostic containing {diagnostic}")

@@ -2,6 +2,7 @@ import logging
 
 from features.environment import CIS2_USERS
 from messages.eps_fhir.cancel import Cancel
+from messages.eps_fhir.claim import Claim
 from messages.eps_fhir.dispense_notification import DispenseNotification
 
 from messages.eps_fhir.prescription import Prescription
@@ -116,6 +117,18 @@ def return_prescription(context):
 
     context.return_body = Return(context).body
     post(data=context.return_body, url=url, context=context, headers=headers)
+
+
+def submit_claim(context):
+    url = f"{DISPENSING_BASE_URL}/FHIR/R4/Claim"
+    additional_headers = {
+        "NHSD-Session-URID": CIS2_USERS["dispenser"]["role_id"],
+        "Content-Type": "application/fhir+json",
+    }
+    headers = get_headers(context, context.auth_method, additional_headers)
+
+    context.claim_body = Claim(context).body
+    post(data=context.claim_body, url=url, context=context, headers=headers)
 
 
 def call_validator(context, product, show_validation, validate_body):
