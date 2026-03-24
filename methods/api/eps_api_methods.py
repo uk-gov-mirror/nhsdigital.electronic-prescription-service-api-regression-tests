@@ -1,5 +1,8 @@
+import logging
+
 from features.environment import CIS2_USERS
 from messages.eps_fhir.cancel import Cancel
+from messages.eps_fhir.claim import Claim
 from messages.eps_fhir.dispense_notification import DispenseNotification
 
 from messages.eps_fhir.prescription import Prescription
@@ -12,6 +15,8 @@ from messages.eps_fhir.withdraw_dispense_notification import (
 from messages.eps_fhir.dispense_notification import DNProps
 from methods.api.common_api_methods import get_headers, post
 from methods.shared.common import the_expected_response_code_is_returned
+
+logger = logging.getLogger(__name__)
 
 PRESCRIBING_BASE_URL = ""
 DISPENSING_BASE_URL = ""
@@ -59,6 +64,7 @@ def create_signed_prescription(context):
     context.signed_body = SignedPrescription(context).body
     post(data=context.signed_body, url=url, context=context, headers=headers)
     the_expected_response_code_is_returned(context, 200)
+    logger.info("Signed prescription created successfully with ID: %s", context.prescription_id)
 
 
 def release_signed_prescription(context):
@@ -111,6 +117,18 @@ def return_prescription(context):
 
     context.return_body = Return(context).body
     post(data=context.return_body, url=url, context=context, headers=headers)
+
+
+def submit_claim(context):
+    url = f"{DISPENSING_BASE_URL}/FHIR/R4/Claim"
+    additional_headers = {
+        "NHSD-Session-URID": CIS2_USERS["dispenser"]["role_id"],
+        "Content-Type": "application/fhir+json",
+    }
+    headers = get_headers(context, context.auth_method, additional_headers)
+
+    context.claim_body = Claim(context).body
+    post(data=context.claim_body, url=url, context=context, headers=headers)
 
 
 def call_validator(context, product, show_validation, validate_body):

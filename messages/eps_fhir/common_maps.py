@@ -9,6 +9,9 @@ THERAPY_TYPE_MAP = {
     },
 }
 
+ERD_DEFAULT_REPEATS_ALLOWED = 6
+ERD_DEFAULT_REPEATS_ISSUED = 0
+
 STATUS_MAP = {
     "Awaiting Release Ready": "0000",
     "To be Dispensed": "0001",

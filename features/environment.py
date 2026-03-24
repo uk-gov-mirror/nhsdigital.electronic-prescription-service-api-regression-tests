@@ -166,6 +166,8 @@ EPS_FHIR_DISPENSING_SUFFIX = "fhir-dispensing"
 PFP_SUFFIX = "prescriptions-for-patients"
 PFP_PROXYGEN_SUFFIX = "prescriptions-for-patients-v2"
 PSU_SUFFIX = "prescription-status-update"
+GSUL_PREFIX = "psu"
+GSUL_SUFFIX = "get-status-updates"
 
 EPSAM_SLACKBOT_FUNCTION_EXPORT_NAME = "epsam{{aws_pull_request_id}}:lambda:SlackBot:FunctionName"
 EPSAM_STACK_NAME = "epsam{{aws_pull_request_id}}"
@@ -361,6 +363,8 @@ def before_all(context):
         context.eps_fhir_prescribing_base_url = os.path.join(select_apigee_base_url(env), EPS_FHIR_PRESCRIBING_SUFFIX)
         context.eps_fhir_dispensing_base_url = os.path.join(select_apigee_base_url(env), EPS_FHIR_DISPENSING_SUFFIX)
         context.psu_base_url = os.path.join(select_apigee_base_url(env), PSU_SUFFIX)
+        # Intentionally AWS env, GSUL is not exposed in Apigee
+        context.gsul_base_url = f"https://{GSUL_PREFIX}{os.path.join(select_aws_base_url(env), GSUL_SUFFIX)}"
         context.cpts_fhir_base_url = os.path.join(select_apigee_base_url(env), CPTS_FHIR_SUFFIX)
 
         if "PFP-PROXYGEN" in product:
@@ -398,6 +402,7 @@ def before_all(context):
     print("EPS-DISPENSING: ", context.eps_fhir_dispensing_base_url)
     print("PFP: ", context.pfp_base_url)
     print("PSU: ", context.psu_base_url)
+    print("GSUL: ", context.gsul_base_url)
 
 
 def get_function_export_name(context):
@@ -431,6 +436,7 @@ def get_url_with_pr(context, env, product):
         context.pfp_base_url = os.path.join(INTERNAL_DEV_BASE_URL, f"{PFP_PROXYGEN_SUFFIX}-{pull_request_id}")
     if product == "PSU":
         context.psu_base_url = os.path.join(INTERNAL_DEV_BASE_URL, f"{PSU_SUFFIX}-{pull_request_id}")
+        handle_gsul_aws_pr_url(context, env)
     if product == "PFP-AWS":
         handle_pfp_aws_pr_url(context, env)
     if product == "CPTS-UI":
@@ -457,6 +463,13 @@ def handle_pfp_aws_pr_url(context, env):
         context.pfp_base_url = PFP_AWS_PR_URL.replace("{{aws_pull_request_id}}", pull_request_id)
     if env == "INTERNAL-DEV-SANDBOX":
         context.pfp_base_url = PFP_AWS_SANDBOX_PR_URL.replace("{{aws_pull_request_id}}", pull_request_id)
+
+
+def handle_gsul_aws_pr_url(context, env):
+    assert PULL_REQUEST_ID is not None
+    pull_request_id = PULL_REQUEST_ID.lower()
+    if env == "INTERNAL-DEV":
+        context.gsul_base_url = context.gsul_base_url.replace(GSUL_PREFIX, f"{GSUL_PREFIX}-{pull_request_id}")
 
 
 def after_all(context):
