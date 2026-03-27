@@ -100,6 +100,8 @@ Given I successfully prepare a {nomination} {prescription_type} prescription
 
 Given I release all prescriptions
 
+Given prescribing signature validation is enabled for the current environment
+
 Given A regression test suite is executed
     initialise regression test context
 
@@ -318,6 +320,8 @@ When I submit a claim for the prescription
 When I make a {validity} request to the {product} validator endpoint with show validation set to {show_validation}
 
 When I make a request with file {filename} to the {product} validator endpoint
+
+When I sign the prescription with an invalid signature
 
 When The test invokes the slackbot lambda with a direct invocation event
     perform basic direct invocation test
@@ -686,6 +690,8 @@ Then the validator response has error with diagnostic containing {diagnostic}
 Then the validator response matches {filename}
 
 Then the signing algorithm is {algorithm}
+
+Then the response body contains a signature validation error
 
 Then The lambda returns a structured AI response matching expected format
     validate complete response structure compliance
