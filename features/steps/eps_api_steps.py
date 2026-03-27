@@ -12,6 +12,7 @@ from jycm.jycm import YouchamaJsonDiffer
 from methods.api.eps_api_methods import (
     cancel_all_line_items,
     create_signed_prescription,
+    create_signed_prescription_with_invalid_signature,
     dispense_prescription,
     prepare_prescription,
     try_prepare_prescription,
@@ -22,7 +23,7 @@ from methods.api.eps_api_methods import (
     call_validator,
 )
 from methods.shared.common import assert_that, get_auth
-from features.environment import APIGEE_APPS
+from features.environment import APIGEE_APPS, is_prescribing_signature_validation_enabled
 from utils.random_nhs_number_generator import generate_single
 from messages.eps_fhir.prescription import Prescription
 from messages.eps_fhir.common_maps import (
@@ -535,3 +536,32 @@ def validator_response_matches_file(context, filename):
 @then("the signing algorithm is {algorithm}")
 def the_signing_algorithm_is(context, algorithm):
     assert_that(algorithm).is_equal_to(context.algorithm)
+
+
+@given("prescribing signature validation is enabled for the current environment")
+def prescribing_signature_validation_is_enabled(context):
+    env = context.config.userdata["env"]
+    if not is_prescribing_signature_validation_enabled(env):
+        context.scenario.skip(f"Prescribing signature validation is not enabled for environment: {env}")
+
+
+@when("I sign the prescription with an invalid signature")
+def i_sign_the_prescription_with_an_invalid_signature(context):
+    create_signed_prescription_with_invalid_signature(context)
+
+
+@then("the response body contains a signature validation error")
+def the_response_body_contains_a_signature_validation_error(context):
+    json_response = json.loads(context.response.content)
+    assert_that(json_response["resourceType"]).is_equal_to("OperationOutcome")
+    issues = json_response["issue"]
+    assert_that(len(issues)).is_greater_than(0)
+    signature_issues = [
+        issue
+        for issue in issues
+        if next(iter(issue.get("details", {}).get("coding", [])), {}).get("code") == "INVALID_VALUE"
+        and next(iter(issue.get("details", {}).get("coding", [])), {}).get("system")
+        == "https://fhir.nhs.uk/CodeSystem/Spine-ErrorOrWarningCode"
+        and "Provenance.signature.data" in issue.get("expression", [])
+    ]
+    assert_that(len(signature_issues)).is_greater_than_or_equal_to(1)
