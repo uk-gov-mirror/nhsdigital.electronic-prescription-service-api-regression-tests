@@ -88,6 +88,5 @@
         ]
       }
     }
-  },
-  "postAttachCommand": "git-secrets --register-aws; git-secrets --add-provider -- cat /usr/share/secrets-scanner/nhsd-rules-deny.txt"
+  }
 }
