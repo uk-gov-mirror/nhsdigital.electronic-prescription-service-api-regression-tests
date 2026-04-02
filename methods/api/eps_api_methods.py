@@ -74,7 +74,32 @@ def release_signed_prescription(context):
     additional_headers = {"NHSD-Session-URID": CIS2_USERS["dispenser"]["role_id"]}
     headers = get_headers(context, context.auth_method, additional_headers)
 
-    context.release_body = Release(context).body
+    context.release_body = Release(context, include_practitioner_role=True).body
+    post(data=context.release_body, url=url, context=context, headers=headers)
+
+
+def release_signed_prescription_without_practitioner_role(context):
+    url = f"{DISPENSING_BASE_URL}/FHIR/R4/Task/$release"
+    additional_headers = {"NHSD-Session-URID": CIS2_USERS["dispenser"]["role_id"]}
+    headers = get_headers(context, context.auth_method, additional_headers)
+
+    context.release_body = Release(context, include_practitioner_role=False).body
+    post(data=context.release_body, url=url, context=context, headers=headers)
+
+
+def release_prescription_unattended(context):
+    url = f"{DISPENSING_BASE_URL}/FHIR/R4/Task/$release-unattended"
+    headers = get_headers(context, context.auth_method)
+
+    context.release_body = Release(context, include_practitioner_role=False).body
+    post(data=context.release_body, url=url, context=context, headers=headers)
+
+
+def release_prescription_unattended_with_practitioner_role(context):
+    url = f"{DISPENSING_BASE_URL}/FHIR/R4/Task/$release-unattended"
+    headers = get_headers(context, context.auth_method)
+
+    context.release_body = Release(context, include_practitioner_role=True).body
     post(data=context.release_body, url=url, context=context, headers=headers)
 
 

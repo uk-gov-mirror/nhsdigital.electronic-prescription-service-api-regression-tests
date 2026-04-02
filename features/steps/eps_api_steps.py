@@ -17,6 +17,9 @@ from methods.api.eps_api_methods import (
     prepare_prescription,
     try_prepare_prescription,
     release_signed_prescription,
+    release_signed_prescription_without_practitioner_role,
+    release_prescription_unattended,
+    release_prescription_unattended_with_practitioner_role,
     return_prescription,
     submit_claim,
     withdraw_dispense_notification,
@@ -256,6 +259,24 @@ def i_release_all_prescriptions(context):
 @step("I release the prescription")
 def i_release_the_prescription(context):
     release_signed_prescription(context)
+
+
+@when("I try to release the prescription without a practitioner role")
+@step("I release the prescription without a practitioner role")
+def i_release_the_prescription_without_practitioner_role(context):
+    release_signed_prescription_without_practitioner_role(context)
+
+
+@when("I try to release the prescription via the unattended endpoint")
+@step("I release the prescription via the unattended endpoint")
+def i_release_the_prescription_via_the_unattended_endpoint(context):
+    release_prescription_unattended(context)
+
+
+@when("I try to release the prescription via the unattended endpoint with a practitioner role")
+@step("I release the prescription via the unattended endpoint with a practitioner role")
+def i_release_the_prescription_via_the_unattended_endpoint_with_practitioner_role(context):
+    release_prescription_unattended_with_practitioner_role(context)
 
 
 @when("I return the prescription")

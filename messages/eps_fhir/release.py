@@ -11,12 +11,14 @@ class ReleaseValues:
 
 
 class Release:
-    def __init__(self, context: Any) -> None:
+    def __init__(self, context: Any, include_practitioner_role: bool = True) -> None:
         self.values = ReleaseValues(context)
         group_identifier = self.create_group_identifier()
         owner = self.create_owner()
-        agent = self.create_agent()
-        self.body = self.create_fhir_parameter(group_identifier, owner, agent)
+        entries = [group_identifier, owner]
+        if include_practitioner_role:
+            entries.append(self.create_agent())
+        self.body = self.create_fhir_parameter(*entries)
 
     def create_group_identifier(self):
         return {
