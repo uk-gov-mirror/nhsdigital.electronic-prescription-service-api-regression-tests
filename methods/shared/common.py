@@ -5,6 +5,7 @@ from urllib.error import HTTPError
 import allure
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+import logging
 
 from assertpy import assert_that as assertpy_assert  # type: ignore
 from pytest_nhsd_apim.identity_service import (
@@ -23,6 +24,8 @@ from features.environment import (
     EPS_FHIR_DISPENSING_JWT_PRIVATE_KEY,
     EPS_FHIR_DISPENSING_JWT_KID,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def get_psu_authenticator(env, url):
@@ -207,6 +210,13 @@ def attach_api_information(context):
 
 def the_expected_response_code_is_returned(context, expected_response_code: int):
     actual_response_code = context.response.status_code
+    if actual_response_code != expected_response_code:
+        logger.error(
+            "Unexpected response code. expected=%s actual=%s body=%s",
+            expected_response_code,
+            actual_response_code,
+            context.response.text,
+        )
     assert_that(actual_response_code).is_equal_to(expected_response_code)
 
 

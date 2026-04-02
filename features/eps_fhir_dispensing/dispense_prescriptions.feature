@@ -33,7 +33,7 @@ Feature: I can dispense prescriptions
     Given a nominated acute prescription has been created using proxygen apis
     And I am an authorised dispenser with EPS-FHIR-DISPENSING-JWT app
     When I try to release the prescription
-    Then the response indicates forbidden
+    Then the response indicates unauthorised
 
   @release
   @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-6543
@@ -58,7 +58,7 @@ Feature: I can dispense prescriptions
     Given a nominated acute prescription has been created using proxygen apis
     And I am an authorised dispenser with EPS-FHIR-DISPENSING app
     When I try to release the prescription via the unattended endpoint
-    Then the response indicates forbidden
+    Then the response indicates unauthorised
 
   @release-unattended @application-restricted
   @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-6543
