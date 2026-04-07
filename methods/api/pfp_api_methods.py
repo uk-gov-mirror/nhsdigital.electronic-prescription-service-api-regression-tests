@@ -1,13 +1,16 @@
+import logging
 from methods.api.common_api_methods import get, get_headers
+
+logger = logging.getLogger(__name__)
 
 
 def get_prescriptions(context):
     url = f"{context.pfp_base_url}/Bundle"
-    print(f"Requesting prescriptions from PFP API: {url}")
     additional_headers = {
         "x-nhs-number": context.nhs_number,
         "nhsd-nhslogin-user": "P9:" + context.nhs_number,
     }
     headers = get_headers(context, "oauth2", additional_headers)
+    logger.debug("Requesting prescriptions from PFP API: %s, headers=%s", url, headers)
     context.response = get(url=url, context=context, headers=headers, timeout=10)
-    print(f"Received response with status code: {context.response.status_code}")
+    logger.debug("Received response with status code: %s", context.response.status_code)
