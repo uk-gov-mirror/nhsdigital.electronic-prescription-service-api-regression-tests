@@ -129,3 +129,11 @@ def verify_timed_out_session_and_logged_out_page(context):
     assert (
         "/session-logged-out" in current_url
     ), f"Expected URL to contain '/session-logged-out', but got: {current_url}"
+
+
+@when("I minimise the browser window")
+def minimise_browser_window(context):
+    """Simulate browser minimization by using page visibility API."""
+    # Use Playwright to simulate page becoming hidden (minimized)
+    context.active_page.evaluate("() => { Object.defineProperty(document, 'hidden', {value: true, writable: false}); }")
+    context.active_page.evaluate("() => { document.dispatchEvent(new Event('visibilitychange')); }")
