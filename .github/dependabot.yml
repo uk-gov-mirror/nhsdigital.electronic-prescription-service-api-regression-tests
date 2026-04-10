@@ -14,6 +14,8 @@ updates:
       time: "18:00" # UTC
     commit-message:
       prefix: "Upgrade: [dependabot] - "
+    cooldown:
+      default-days: 7
 
   ###################################
   # Poetry  #########################
@@ -27,6 +29,8 @@ updates:
     versioning-strategy: increase
     commit-message:
       prefix: "Upgrade: [dependabot] - "
+    cooldown:
+      default-days: 7
 
   ###################################
   # NPM workspace  ##################
@@ -40,3 +44,5 @@ updates:
     versioning-strategy: increase
     commit-message:
       prefix: "Upgrade: [dependabot] - "
+    cooldown:
+      default-days: 7

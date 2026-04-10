@@ -1,6 +1,10 @@
 import json
+from datetime import UTC, datetime
+import logging
 from typing import Any
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 
 class StatusUpdatesValues:
@@ -11,6 +15,7 @@ class StatusUpdatesValues:
         self.item_status = context.item_status
         self.receiver_ods_code = context.receiver_ods_code
         self.nhs_number = context.nhs_number
+        self.post_dated_timestamp = getattr(context, "post_dated_timestamp", None)
 
 
 class StatusUpdate:
@@ -26,54 +31,63 @@ class StatusUpdate:
             "type": "transaction",
             "entry": [],
         }
+
         fhir_resource["entry"].extend(entries)
+        logger.debug("Created FHIR bundle for status update: %s", json.dumps(fhir_resource, indent=2))
         return json.dumps(fhir_resource)
 
     def create_task(self):
         task_identifier = uuid4()
+        is_post_dated = bool(self.values.post_dated_timestamp)
+
+        task_resource = {
+            "resourceType": "Task",
+            "id": f"{task_identifier}",
+            "basedOn": [
+                {
+                    "identifier": {
+                        "system": "https://fhir.nhs.uk/Id/prescription-order-number",
+                        "value": f"{self.values.prescription_id}",
+                    }
+                }
+            ],
+            "status": f"{self.values.terminal_status}",
+            "businessStatus": {
+                "coding": [
+                    {
+                        "system": "https://fhir.nhs.uk/CodeSystem/task-businessStatus-nppt",
+                        "code": f"{self.values.item_status}",
+                    }
+                ]
+            },
+            "intent": "order",
+            "focus": {
+                "identifier": {
+                    "system": "https://fhir.nhs.uk/Id/prescription-order-item-number",
+                    "value": f"{self.values.prescription_item_id}",
+                }
+            },
+            "for": {
+                "identifier": {
+                    "system": "https://fhir.nhs.uk/Id/nhs-number",
+                    "value": f"{self.values.nhs_number}",
+                }
+            },
+            "lastModified": (self.values.post_dated_timestamp if is_post_dated else datetime.now(UTC).isoformat()),
+            "owner": {
+                "identifier": {
+                    "system": "https://fhir.nhs.uk/Id/ods-organization-code",
+                    "value": f"{self.values.receiver_ods_code}",
+                }
+            },
+        }
+
+        if is_post_dated:
+            task_resource["meta"] = {"lastUpdated": datetime.now(UTC).isoformat()}
+
         task = {
             "fullUrl": f"urn:uuid:{task_identifier}",
-            "resource": {
-                "resourceType": "Task",
-                "id": f"{task_identifier}",
-                "basedOn": [
-                    {
-                        "identifier": {
-                            "system": "https://fhir.nhs.uk/Id/prescription-order-number",
-                            "value": f"{self.values.prescription_id}",
-                        }
-                    }
-                ],
-                "status": f"{self.values.terminal_status}",
-                "businessStatus": {
-                    "coding": [
-                        {
-                            "system": "https://fhir.nhs.uk/CodeSystem/task-businessStatus-nppt",
-                            "code": f"{self.values.item_status}",
-                        }
-                    ]
-                },
-                "intent": "order",
-                "focus": {
-                    "identifier": {
-                        "system": "https://fhir.nhs.uk/Id/prescription-order-item-number",
-                        "value": f"{self.values.prescription_item_id}",
-                    }
-                },
-                "for": {
-                    "identifier": {
-                        "system": "https://fhir.nhs.uk/Id/nhs-number",
-                        "value": f"{self.values.nhs_number}",
-                    }
-                },
-                "lastModified": "2024-08-19T16:11:13Z",
-                "owner": {
-                    "identifier": {
-                        "system": "https://fhir.nhs.uk/Id/ods-organization-code",
-                        "value": f"{self.values.receiver_ods_code}",
-                    }
-                },
-            },
+            "resource": task_resource,
             "request": {"method": "POST", "url": "Task"},
         }
         return task

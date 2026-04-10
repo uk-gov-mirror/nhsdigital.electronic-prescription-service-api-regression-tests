@@ -1,5 +1,9 @@
+import json
+import logging
+
 from features.environment import CIS2_USERS
 from messages.eps_fhir.cancel import Cancel
+from messages.eps_fhir.claim import Claim
 from messages.eps_fhir.dispense_notification import DispenseNotification
 
 from messages.eps_fhir.prescription import Prescription
@@ -12,6 +16,9 @@ from messages.eps_fhir.withdraw_dispense_notification import (
 from messages.eps_fhir.dispense_notification import DNProps
 from methods.api.common_api_methods import get_headers, post
 from methods.shared.common import the_expected_response_code_is_returned
+from utils.signing import DUMMY_SIGNATURE
+
+logger = logging.getLogger(__name__)
 
 PRESCRIBING_BASE_URL = ""
 DISPENSING_BASE_URL = ""
@@ -59,6 +66,7 @@ def create_signed_prescription(context):
     context.signed_body = SignedPrescription(context).body
     post(data=context.signed_body, url=url, context=context, headers=headers)
     the_expected_response_code_is_returned(context, 200)
+    logger.info("Signed prescription created successfully with ID: %s", context.prescription_id)
 
 
 def release_signed_prescription(context):
@@ -111,6 +119,50 @@ def return_prescription(context):
 
     context.return_body = Return(context).body
     post(data=context.return_body, url=url, context=context, headers=headers)
+
+
+def create_signed_prescription_with_invalid_signature(context):
+    url = f"{PRESCRIBING_BASE_URL}/FHIR/R4/$process-message#prescription-order"
+    headers = get_headers(context, context.auth_method)
+
+    prescription = json.loads(context.prepare_body)
+    provenance = {
+        "fullUrl": "urn:uuid:28828c55-8fa7-42d7-916f-fcf076e0c10e",
+        "resource": {
+            "resourceType": "Provenance",
+            "target": [{"reference": "urn:uuid:a54219b8-f741-4c47-b662-e4f8dfa49ab6"}],
+            "recorded": "2008-02-27T11:38:00+00:00",
+            "agent": [{"who": {"reference": "urn:uuid:56166769-c1c4-4d07-afa8-132b5dfca666"}}],
+            "signature": [
+                {
+                    "type": [
+                        {
+                            "system": "urn:iso-astm:E1762-95:2013",
+                            "code": "1.2.840.10065.1.12.1.1",
+                        }
+                    ],
+                    "when": context.timestamp,
+                    "who": {"reference": "urn:uuid:56166769-c1c4-4d07-afa8-132b5dfca666"},
+                    "data": DUMMY_SIGNATURE.strip(),
+                }
+            ],
+        },
+    }
+    prescription["entry"].append(provenance)
+    context.signed_body = json.dumps(prescription)
+    post(data=context.signed_body, url=url, context=context, headers=headers)
+
+
+def submit_claim(context):
+    url = f"{DISPENSING_BASE_URL}/FHIR/R4/Claim"
+    additional_headers = {
+        "NHSD-Session-URID": CIS2_USERS["dispenser"]["role_id"],
+        "Content-Type": "application/fhir+json",
+    }
+    headers = get_headers(context, context.auth_method, additional_headers)
+
+    context.claim_body = Claim(context).body
+    post(data=context.claim_body, url=url, context=context, headers=headers)
 
 
 def call_validator(context, product, show_validation, validate_body):

@@ -9,6 +9,14 @@ Feature: I can see my prescriptions via PFP Proxygen
     And I request my prescriptions
     Then I can see my prescription
 
+  @blocker @smoke @e2e @service-search
+  Scenario: I can see a single prescription released to a distance selling pharmacy
+    Given I am an authorised prescriber with EPS-FHIR-PRESCRIBING app
+    And a non-nominated acute prescription has been created and released to FLM49
+    When I am authenticated with PFP-PROXYGEN app
+    And I request my prescriptions
+    Then I can see my prescription
+
   # Spine defined limit of 25 prescriptions per request
   Scenario: I can see a maximum of 25 prescriptions
     Given I am an authorised prescriber with EPS-FHIR-PRESCRIBING app
@@ -67,3 +75,10 @@ Feature: I can see my prescriptions via PFP Proxygen
 # #   Then I am an authorised prescriber with EPS-FHIR app
 # #   And I validate the response for FHIR compliance
 # #   And the response indicates a success
+
+  # Ensuring Stacey Twitchett (EPSAT default prescribee) doesn't break dev by timeout
+  @only-dev @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-6089
+  Scenario: Stacey Twitchett can view prescriptions
+    When I am authenticated with PFP-PROXYGEN app
+    And I request prescriptions for NHS number '9449304130'
+    Then I can see '25' of my prescriptions

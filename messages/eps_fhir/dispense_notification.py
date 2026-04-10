@@ -8,6 +8,8 @@ from messages.eps_fhir.common_maps import (
     INTENT_MAP,
     THERAPY_TYPE_MAP,
     NON_DISPENSING_REASON_MAP,
+    ERD_DEFAULT_REPEATS_ALLOWED,
+    ERD_DEFAULT_REPEATS_ISSUED,
 )
 
 
@@ -217,7 +219,7 @@ class DispenseNotification:
             }
 
         if dn_props["prescription_type"] != "acute":
-            medication_request["dispenseRequest"]["numberOfRepeatsAllowed"] = "6"
+            medication_request["dispenseRequest"]["numberOfRepeatsAllowed"] = ERD_DEFAULT_REPEATS_ALLOWED
 
             medication_request["basedOn"] = [
                 {
@@ -227,11 +229,11 @@ class DispenseNotification:
                             "extension": [
                                 {
                                     "url": "numberOfRepeatsAllowed",
-                                    "valueInteger": 6,
+                                    "valueInteger": ERD_DEFAULT_REPEATS_ALLOWED,
                                 },
                                 {
                                     "url": "numberOfRepeatsIssued",
-                                    "valueInteger": 0,
+                                    "valueInteger": ERD_DEFAULT_REPEATS_ISSUED,
                                 },
                             ],
                         }

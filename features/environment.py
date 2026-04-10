@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, expect
 from methods.api import eps_api_methods
 import allure
+import boto3
 import requests
 import json
 
@@ -94,6 +95,7 @@ CIS2_USERS = {
 
 AWS_ROLES = {
     "eps-assist-me": {"role_id": os.getenv("EPS_ASSIST_ME_ROLE_ARN")},
+    "cloud-formation-check": {"role_id": os.getenv("CLOUD_FORMATION_CHECK_ROLE")},
 }
 
 LOGIN_USERS = {"user_id": "9449304130"}
@@ -166,9 +168,77 @@ EPS_FHIR_DISPENSING_SUFFIX = "fhir-dispensing"
 PFP_SUFFIX = "prescriptions-for-patients"
 PFP_PROXYGEN_SUFFIX = "prescriptions-for-patients-v2"
 PSU_SUFFIX = "prescription-status-update"
+GSUL_PREFIX = "psu"
+GSUL_SUFFIX = "get-status-updates"
+
+EPS_PRESCRIBE_DISPENSE_STACK_NAME = "prescribe-dispense{{aws_pull_request_id}}"
 
 EPSAM_SLACKBOT_FUNCTION_EXPORT_NAME = "epsam{{aws_pull_request_id}}:lambda:SlackBot:FunctionName"
 EPSAM_STACK_NAME = "epsam{{aws_pull_request_id}}"
+
+
+def _get_cf_export_bool(export_name_substring: str) -> bool | None:
+    """Find a CloudFormation export by name and return its boolean value.
+
+    Scans all exports in the current account/region for one whose name matches
+    ``export_name_substring``.  Returns ``True`` / ``False`` based on the export
+    value, or ``None`` if the export cannot be found or CloudFormation is
+    unreachable (e.g. no AWS credentials).
+
+    Credentials are resolved via the standard boto3 credential chain
+    (environment variables, ~/.aws, instance profile, etc.).
+    """
+    try:
+        role_arn = AWS_ROLES["cloud-formation-check"]["role_id"]
+        if role_arn:
+            from methods.shared.common import assume_aws_role
+
+            creds = assume_aws_role(role_arn=role_arn, session_name="regression-tests-cfn-read")
+            cf_client = boto3.client(
+                "cloudformation",
+                region_name="eu-west-2",
+                aws_access_key_id=creds["aws_access_key_id"],
+                aws_secret_access_key=creds["aws_secret_access_key"],
+                aws_session_token=creds["aws_session_token"],
+            )
+        else:
+            cf_client = boto3.client("cloudformation", region_name="eu-west-2")
+
+        paginator = cf_client.get_paginator("list_exports")
+        for page in paginator.paginate():
+            for export in page["Exports"]:
+                if export["Name"] == export_name_substring:
+                    return export["Value"].lower() == "true"
+    except Exception as exc:
+        logging.warning("Could not query CloudFormation exports for %s: %s", export_name_substring, exc)
+    return None
+
+
+def is_prescribing_signature_validation_enabled(env: str) -> bool:
+    """Check if prescribing signature validation is enabled for the target environment.
+
+    The stack name is derived from ``EPS_PRESCRIBE_DISPENSE_STACK_NAME``, with the
+    PR suffix applied when ``PULL_REQUEST_ID`` is set (e.g. ``prescribe-dispense-pr-123``).
+
+    Resolution order:
+      1. CloudFormation export ``{stack_name}:enablePrescribingSignatureValidation``
+         (dynamically reflects the deployed stack configuration).
+      2. Falls back to ``False`` when the export is not available.
+    """
+
+    pr_id = PULL_REQUEST_ID.lower() if PULL_REQUEST_ID is not None else None
+    suffix = f"-{pr_id}" if pr_id is not None and pr_id.startswith("pr-") else ""
+    stack_name = EPS_PRESCRIBE_DISPENSE_STACK_NAME.replace("{{aws_pull_request_id}}", suffix)
+    cf_value = _get_cf_export_bool(f"{stack_name}:enablePrescribingSignatureValidation")
+    if cf_value is not None:
+        return cf_value
+
+    logging.warning(
+        "Prescribing signature validation flag not found for env '%s' (stack '%s'); defaulting to False.",
+        env,
+        stack_name,
+    )
+    return False
 
 
 class ConflictException(Exception):
@@ -246,6 +316,9 @@ def before_scenario(context, scenario):
         return
     if "deployed_only" in scenario.effective_tags and environment == "localhost":
         scenario.skip("Marked as only to run in deployed environments")
+        return
+    if "only-dev" in scenario.effective_tags and environment != "internal-dev":
+        scenario.skip("Marked with @only-dev, environment not internal-dev")
         return
     product = context.config.userdata["product"].upper()
     if product == "CPTS-UI":
@@ -358,6 +431,8 @@ def before_all(context):
         context.eps_fhir_prescribing_base_url = os.path.join(select_apigee_base_url(env), EPS_FHIR_PRESCRIBING_SUFFIX)
         context.eps_fhir_dispensing_base_url = os.path.join(select_apigee_base_url(env), EPS_FHIR_DISPENSING_SUFFIX)
         context.psu_base_url = os.path.join(select_apigee_base_url(env), PSU_SUFFIX)
+        # Intentionally AWS env, GSUL is not exposed in Apigee
+        context.gsul_base_url = f"https://{GSUL_PREFIX}{os.path.join(select_aws_base_url(env), GSUL_SUFFIX)}"
         context.cpts_fhir_base_url = os.path.join(select_apigee_base_url(env), CPTS_FHIR_SUFFIX)
 
         if "PFP-PROXYGEN" in product:
@@ -395,12 +470,14 @@ def before_all(context):
     print("EPS-DISPENSING: ", context.eps_fhir_dispensing_base_url)
     print("PFP: ", context.pfp_base_url)
     print("PSU: ", context.psu_base_url)
+    print("GSUL: ", context.gsul_base_url)
 
 
 def get_function_export_name(context):
-    # only apply suffix if PR ID exists and starts with lowercase "pr-"
-    if PULL_REQUEST_ID is not None and PULL_REQUEST_ID.startswith("pr-"):
-        suffix = f"-{PULL_REQUEST_ID}"
+    # only apply suffix if PR ID exists and contains "pr-" (case-insensitive)
+    pr_id = PULL_REQUEST_ID.lower() if PULL_REQUEST_ID is not None else None
+    if pr_id is not None and pr_id.startswith("pr-"):
+        suffix = f"-{pr_id}"
     else:
         suffix = ""
 
@@ -428,6 +505,7 @@ def get_url_with_pr(context, env, product):
         context.pfp_base_url = os.path.join(INTERNAL_DEV_BASE_URL, f"{PFP_PROXYGEN_SUFFIX}-{pull_request_id}")
     if product == "PSU":
         context.psu_base_url = os.path.join(INTERNAL_DEV_BASE_URL, f"{PSU_SUFFIX}-{pull_request_id}")
+        handle_gsul_aws_pr_url(context, env)
     if product == "PFP-AWS":
         handle_pfp_aws_pr_url(context, env)
     if product == "CPTS-UI":
@@ -454,6 +532,13 @@ def handle_pfp_aws_pr_url(context, env):
         context.pfp_base_url = PFP_AWS_PR_URL.replace("{{aws_pull_request_id}}", pull_request_id)
     if env == "INTERNAL-DEV-SANDBOX":
         context.pfp_base_url = PFP_AWS_SANDBOX_PR_URL.replace("{{aws_pull_request_id}}", pull_request_id)
+
+
+def handle_gsul_aws_pr_url(context, env):
+    assert PULL_REQUEST_ID is not None
+    pull_request_id = PULL_REQUEST_ID.lower()
+    if env == "INTERNAL-DEV":
+        context.gsul_base_url = context.gsul_base_url.replace(GSUL_PREFIX, f"{GSUL_PREFIX}-{pull_request_id}")
 
 
 def after_all(context):
