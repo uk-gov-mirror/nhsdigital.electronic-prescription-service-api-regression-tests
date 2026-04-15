@@ -1,0 +1,3 @@
+ignore:
+  # node - being upgraded to 24.14.1
+  - vulnerability: CVE-2026-21710

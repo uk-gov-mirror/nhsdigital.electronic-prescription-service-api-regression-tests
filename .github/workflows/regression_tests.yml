@@ -78,6 +78,7 @@ on:
         description: "Generate a report for successful test runs"
         default: false
 
+permissions: {}
 jobs:
   regression_tests:
     runs-on: ubuntu-22.04
@@ -121,6 +122,10 @@ jobs:
   get_config_values:
     needs: regression_tests
     uses: NHSDigital/eps-common-workflows/.github/workflows/get-repo-config.yml@e798d5aee897de6f7dc387dd5623fcd9ba4c8929
+    permissions:
+      attestations: read
+      contents: read
+      packages: read
     with:
       verify_published_from_main_image: false
 
@@ -158,9 +163,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.github_tag }}
+          persist-credentials: false
 
       - name: Cache Virtualenv
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
         id: cache-venv
         with:
           path: .venv
@@ -321,6 +327,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
+          persist-credentials: false
           ref: ${{ inputs.github_tag }}
       - name: Cache Virtualenv
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb
