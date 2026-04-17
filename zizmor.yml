@@ -2,6 +2,6 @@ rules:
   unpinned-images:
     # these workflows use unpinned images because they are using a full image passed in that contains the tag
     ignore:
-      - release.yml:47:7
-      - regression_tests.yml:294:7
-      - regression_tests.yml:134:7
+      - release.yml:58:7
+      - regression_tests.yml:297:7
+      - regression_tests.yml:137:7
