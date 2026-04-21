@@ -34,7 +34,7 @@ install-playwright:
 	playwright install --force chrome
 
 install-node:
-	npm ci
+	npm ci --ignore-scripts
 
 lint-black:
 	poetry run black .
