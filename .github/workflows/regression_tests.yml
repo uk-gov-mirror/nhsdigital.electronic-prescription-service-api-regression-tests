@@ -78,6 +78,7 @@ on:
         description: "Generate a report for successful test runs"
         default: false
 
+permissions: {}
 jobs:
   regression_tests:
     runs-on: ubuntu-22.04
@@ -120,7 +121,11 @@ jobs:
           echo run identifier "$ID"-"$PRODUCT"-"$ENV"-"$PULL_REQUEST_ID"  >> "$GITHUB_STEP_SUMMARY"
   get_config_values:
     needs: regression_tests
-    uses: NHSDigital/eps-common-workflows/.github/workflows/get-repo-config.yml@5ac2707dd9cd60ad127275179495b9c890d74711
+    uses: NHSDigital/eps-common-workflows/.github/workflows/get-repo-config.yml@e798d5aee897de6f7dc387dd5623fcd9ba4c8929
+    permissions:
+      attestations: read
+      contents: read
+      packages: read
     with:
       verify_published_from_main_image: false
 
@@ -158,9 +163,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ inputs.github_tag }}
+          persist-credentials: false
 
       - name: Cache Virtualenv
-        uses: actions/cache@v5
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         id: cache-venv
         with:
           path: .venv
@@ -273,7 +279,7 @@ jobs:
           poetry run python ./runner.py --env="$ENVIRONMENT" --product="$PRODUCT" --tags="$TAGS"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: allure-results-${{ matrix.tag }}
           path: allure-results
@@ -312,7 +318,7 @@ jobs:
           rsync -av downloaded_artifacts/environment.properties allure-results/
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: allure-results
           path: allure-results
@@ -321,9 +327,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
+          persist-credentials: false
           ref: ${{ inputs.github_tag }}
       - name: Cache Virtualenv
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         id: cache-venv
         with:
           path: .venv
