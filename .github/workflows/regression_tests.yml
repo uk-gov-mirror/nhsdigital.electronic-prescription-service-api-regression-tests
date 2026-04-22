@@ -3,7 +3,8 @@ on:
   workflow_dispatch:
     inputs:
       tags:
-        description: "Test scenario tags. If you want to specify multiple tags, you should separate them with a colon :"
+        description: "Test scenario tags. If you want to specify multiple tags, you
+          should separate them with a colon :"
         required: true
         type: string
         default: "@regression"
@@ -33,7 +34,8 @@ on:
         required: false
         default: "Manually Triggered Run"
       pull_request_id:
-        description: "The ID of the pull request. This should be in the format pr-xxxx where xxxx is the pull request id"
+        description: "The ID of the pull request. This should be in the format pr-xxxx
+          where xxxx is the pull request id"
         required: false
         default: ""
       github_tag:
@@ -47,7 +49,8 @@ on:
   workflow_call:
     inputs:
       tags:
-        description: "Test scenario tags. If you want to specify multiple tags, you should separate them with a colon :"
+        description: "Test scenario tags. If you want to specify multiple tags, you
+          should separate them with a colon :"
         required: true
         type: string
       environment:
@@ -64,7 +67,8 @@ on:
         type: string
         default: "Manually Triggered Run"
       pull_request_id:
-        description: "The ID of the pull request. This should be in the format pr-xxxx where xxxx is the pull request id"
+        description: "The ID of the pull request. This should be in the format pr-xxxx
+          where xxxx is the pull request id"
         required: false
         type: string
         default: ""
@@ -130,7 +134,7 @@ jobs:
       verify_published_from_main_image: false
 
   run_regression_tests:
-    needs: [regression_tests, get_config_values]
+    needs: [ regression_tests, get_config_values ]
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
     container:
@@ -292,7 +296,7 @@ jobs:
   upload_results:
     runs-on: ubuntu-22.04
     environment: ${{ inputs.environment }}
-    needs: [run_regression_tests, get_config_values]
+    needs: [ run_regression_tests, get_config_values ]
     container:
       image: ${{ needs.get_config_values.outputs.pinned_image }}
       options: --user 1001:1001 --group-add 128
@@ -349,20 +353,25 @@ jobs:
       - name: Generate a token
         id: generate-token
         uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859
-        if: contains(needs.*.result, 'failure') || github.event.inputs.generate_report == 'true'
+        if: contains(needs.*.result, 'failure') || github.event.inputs.generate_report
+          == 'true'
         with:
           app-id: ${{ vars.REGRESSION_TESTS_APP_ID }}
           private-key: ${{ secrets.REGRESSION_TESTS_PEM }}
           owner: "NHSDigital"
-          repositories: "electronic-prescription-service-api-regression-tests,eps-test-reports"
+          repositories: "electronic-prescription-service-api-regression-tests,eps-test-re\
+            ports"
 
       - name: Report failure on test failure
         if: contains(needs.*.result, 'failure')
         run: |
-          poetry run python scripts/send_test_results.py --token=${{ steps.generate-token.outputs.token }} --run_id ${{GITHUB.RUN_ID}}
+          poetry run python scripts/send_test_results.py --token="${TOKEN}" --run_id "${GITHUB_RUN_ID}"
           echo The regression tests step failed, this likely means there are test failures.
           echo A test report will be generated shortly and can be viewed at: https://nhsdigital.github.io/eps-test-reports
           exit 1
+        env:
+          GITHUB_RUN_ID: ${{GITHUB.RUN_ID}}
+          TOKEN: ${{ steps.generate-token.outputs.token }}
 
       - name: Report failure on test cancelled or skipped
         if: contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')

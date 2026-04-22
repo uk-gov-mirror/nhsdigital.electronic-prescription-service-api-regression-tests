@@ -16,7 +16,7 @@ def get_headers():
 
 def trigger_run():
     body = {
-        "ref": "main",
+        "ref": "dev_container",
         "inputs": {"run_id": run_id},
     }
 
