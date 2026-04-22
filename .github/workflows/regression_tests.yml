@@ -365,14 +365,13 @@ jobs:
       - name: Report failure on test failure
         if: contains(needs.*.result, 'failure')
         run: |
-          poetry run python scripts/send_test_results.py --token="${TOKEN}" --run_id "${GITHUB_RUN_ID}" --pinned_image "${PINNED_IMAGE}"
+          poetry run python scripts/send_test_results.py --token="${TOKEN}" --run_id "${GITHUB_RUN_ID}"
           echo The regression tests step failed, this likely means there are test failures.
           echo A test report will be generated shortly and can be viewed at: https://nhsdigital.github.io/eps-test-reports
           exit 1
         env:
           GITHUB_RUN_ID: ${{GITHUB.RUN_ID}}
           TOKEN: ${{ steps.generate-token.outputs.token }}
-          PINNED_IMAGE: ${{ needs.get_config_values.outputs.pinned_image }}
 
       - name: Report failure on test cancelled or skipped
         if: contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
@@ -383,10 +382,9 @@ jobs:
       - name: Generate Report
         if: github.event.inputs.generate_report == 'true'
         run: |
-          poetry run python scripts/send_test_results.py --token="${TOKEN}" --run_id "${GITHUB_RUN_ID}" --pinned_image "${PINNED_IMAGE}"
+          poetry run python scripts/send_test_results.py --token="${TOKEN}" --run_id "${GITHUB_RUN_ID}"
           echo You selected to generate a report for successful test runs.
           echo A test report will be generated shortly and can be viewed at: https://nhsdigital.github.io/eps-test-reports
         env:
           GITHUB_RUN_ID: ${{GITHUB.RUN_ID}}
           TOKEN: ${{ steps.generate-token.outputs.token }}
-          PINNED_IMAGE: ${{ needs.get_config_values.outputs.pinned_image }}

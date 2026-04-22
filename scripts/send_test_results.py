@@ -17,7 +17,7 @@ def get_headers():
 def trigger_run():
     body = {
         "ref": "dev_container",
-        "inputs": {"run_id": run_id, "pinned_image": pinned_image},
+        "inputs": {"run_id": run_id},
     }
 
     response = requests.post(
@@ -36,10 +36,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--token", required=True, help="An authorised token is required")
     parser.add_argument("--run_id", required=True, help="The ID of the workflow Run is Required")
-    parser.add_argument("--pinned_image", required=True, help="The pinned image is Required")
     arguments = parser.parse_args()
     run_id = arguments.run_id
-    pinned_image = arguments.pinned_image
 
     trigger_run()
     print("Success!")
