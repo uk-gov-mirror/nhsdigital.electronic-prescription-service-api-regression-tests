@@ -12,7 +12,7 @@ Feature: Timedout session protections prohibit activity
     When I fast forward 3 minutes so that updateTracker event happens
     Then I am redirected to the logged out for inactivity page
 
-  @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-XXXX
+  @allure.tms:https://nhsd-jira.digital.nhs.uk/browse/AEA-6406
   @single_access @fake_time
   Scenario: Timeout modal appears correctly when browser was minimized during inactive period
     Given I am logged in as a user with a single access role
