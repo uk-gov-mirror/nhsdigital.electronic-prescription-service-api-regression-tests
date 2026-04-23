@@ -1,3 +1,5 @@
 ignore:
   # node - being upgraded to 24.14.1
   - vulnerability: CVE-2026-21710
+  # waiting on APIM to upgrade to a secure version on pytest NHSD-APIM
+  - vulnerability: GHSA-vfmq-68hx-4jfw
