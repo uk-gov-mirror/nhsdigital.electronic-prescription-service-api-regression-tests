@@ -15,7 +15,7 @@ class SearchForAPrescription:
         self.basic_details_search_header = page.get_by_test_id("basic-details-search-heading")
         self.error_summary = page.get_by_test_id("error-summary")
 
-        self.prescription_id_error = page.get_by_test_id("prescription-id-error")
+        self.prescription_id_error = page.get_by_test_id("error-message-multiple")
         self.prescription_id_input = page.get_by_test_id("prescription-id-input")
         self.find_prescription_button = page.get_by_test_id("find-prescription-button")
 
