@@ -9,6 +9,8 @@ import uuid
 from pages.session_logged_out import SessionLoggedOutPage
 from pages.session_timeout_modal import SessionTimeoutModal
 
+FAKE_TIME_TAG_ERROR = "Fake_time tag required in this scenario"
+
 
 @when("the session expires because of automatic timeout")
 def clear_active_session(context):
@@ -26,14 +28,19 @@ def verify_timeout_logged_out_page(context):
     expect(logged_out_page.timeout_description2).to_be_visible()
 
 
+@when("I minimise the browser window")
+def minimise_browser_window(context):
+    context.active_page.evaluate("() => window.blur()")
+    context.active_page.evaluate("() => document.dispatchEvent(new Event('visibilitychange'))")
+
+
 @when("I set lastActivityTime to be 13 minutes ago")
 def set_last_activity_time_13_minutes_ago(context):
     """Call the test support endpoint to set lastActivityTime to 13 minutes in the past"""
     # pylint: disable=broad-exception-raised
     if "fake_time" not in context.tags:
-        raise Exception("Fake_time tag required in this scenario. See README.md")
+        raise ValueError(FAKE_TIME_TAG_ERROR)
 
-    # Wait a moment to ensure session is established after login
     context.active_page.wait_for_timeout(3000)
 
     # Determine username based on scenario tags
@@ -53,14 +60,12 @@ def set_last_activity_time_13_minutes_ago(context):
             break
 
     if not username:
-        raise Exception("No valid account tag found for setting lastActivityTime")
+        raise ValueError("No valid account tag found for setting lastActivityTime")
 
     request_id = str(uuid.uuid4())
-    print(f"Setting lastActivityTime to 13 minutes ago for {username}. Request ID: {request_id}")
 
     payload = json.dumps({"username": username, "request_id": request_id})
 
-    # Call the lambda endpoint to set lastActivityTime to 13 minutes in the past
     response = requests.post(
         f"{context.cpts_ui_base_url}/api/test-support-fake-timer",
         data=payload,
@@ -73,9 +78,8 @@ def set_last_activity_time_13_minutes_ago(context):
 
     if response.status_code != 200:
         print(f"Failed to set lastActivityTime. Response: {response.status_code} - {response.text}")
-        raise Exception(f"Failed to set lastActivityTime: {response.status_code}")
+        response.raise_for_status()
 
-    # fast forward clock by 13 minutes to make frontend think time has passed
     context.active_page.clock.fast_forward(13 * 60 * 1000)
 
 
@@ -84,12 +88,10 @@ def fast_forward_1_minute(context):
     """Fast forward 1 minute to trigger the updateTracker periodic check"""
     # pylint: disable=broad-exception-raised
     if "fake_time" not in context.tags:
-        raise Exception("Fake_time tag required in this scenario. See README.md")
+        raise ValueError(FAKE_TIME_TAG_ERROR)
 
-    # Fast forward by 1 minute to trigger the 60-second interval
     context.active_page.clock.fast_forward(60 * 1000)
 
-    # Give a moment for the periodic check to execute and React to update
     context.active_page.wait_for_timeout(2000)
 
 
@@ -97,35 +99,65 @@ def fast_forward_1_minute(context):
 def verify_timeout_session_modal(context):
     """Verify the timeout session modal is displayed"""
     modal = SessionTimeoutModal(context.active_page)
-
     context.active_page.wait_for_timeout(3000)
 
-    expect(modal.modal_container).to_be_visible(timeout=15000)
-    expect(modal.stay_logged_in_button).to_be_visible(timeout=5000)
-    expect(modal.logout_button).to_be_visible(timeout=5000)
+    try:
+        expect(modal.modal_container).to_be_visible(timeout=15000)
+        expect(modal.stay_logged_in_button).to_be_visible(timeout=5000)
+        expect(modal.logout_button).to_be_visible(timeout=5000)
+    except (TimeoutError, AssertionError) as e:
+        print(f"Modal detection failed: {e}")
+        page_content = context.active_page.content()
+        print(f"Page contains 'session-timeout-modal': {'session-timeout-modal' in page_content}")
+        print(f"Page contains 'For your security': {'For your security' in page_content}")
+        raise AssertionError("Timeout session modal was not found")
 
 
-@when("I fast forward 3 minutes so that updateTracker event happens")
-def fast_forward_3_minutes(context):
+def _capture_countdown_with_fallback(modal, page, description):
+    try:
+        countdown = modal.countdown_time.text_content(timeout=2000)
+        return countdown
+    except (TimeoutError, AttributeError) as e:
+        print(f"Could not read countdown {description.lower()}: {e}")
+        page_text = page.text_content("body")
+        import re
+
+        countdown_match = re.search(r"sign you out in (\d+) seconds?", page_text)
+        if countdown_match:
+            countdown = f"{countdown_match.group(1)} seconds"
+            return countdown
+    return None
+
+
+@when("I fast forward 2 minutes so that updateTracker event happens")
+def fast_forward_2_minutes(context):
     """Wait 2 minutes for natural session timeout"""
     # pylint: disable=broad-exception-raised
     if "fake_time" not in context.tags:
-        raise Exception("Fake_time tag required in this scenario. See README.md")
+        raise ValueError(FAKE_TIME_TAG_ERROR)
 
-    # Wait 2 minutes in real time for natural timeout
+    modal = SessionTimeoutModal(context.active_page)
+
     context.active_page.wait_for_timeout(120000)
+
+    expected_logout_path = "session-logged-out"
+    current_url = context.active_page.url
+    if expected_logout_path in current_url:
+        return
+
+    countdown_after = _capture_countdown_with_fallback(modal, context.active_page, "AFTER 2min wait")
+    if not countdown_after:
+        expected_logout_paths = ["session-logged-out", "logout"]
+        current_url = context.active_page.url
+        if any(path in current_url for path in expected_logout_paths):
+            return
 
 
 @then("I am redirected to the logged out for inactivity page")
 def verify_timed_out_session_and_logged_out_page(context):
-    """Verify that the session has timed out and user is redirected to session-logged-out URL"""
-
-    # Wait for navigation to complete
-    context.active_page.wait_for_load_state("networkidle", timeout=10000)
-
-    # Get current URL and verify it contains session-logged-out
-    current_url = context.active_page.url
-
-    assert (
-        "/session-logged-out" in current_url
-    ), f"Expected URL to contain '/session-logged-out', but got: {current_url}"
+    """Verify that the session has timed out and user is on the logged out page"""
+    logged_out_page = SessionLoggedOutPage(context.active_page)
+    expect(logged_out_page.timeout_session_container).to_be_visible()
+    expect(logged_out_page.timeout_title).to_have_text("For your security, we have logged you out")
+    expect(logged_out_page.timeout_description).to_be_visible()
+    expect(logged_out_page.timeout_description2).to_be_visible()
