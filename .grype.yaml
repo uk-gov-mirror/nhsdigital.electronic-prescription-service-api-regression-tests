@@ -1,5 +1,36 @@
 ignore:
   # node - being upgraded to 24.14.1
   - vulnerability: CVE-2026-21710
+  - vulnerability: CVE-2026-21717
+    package:
+      name: node
+      version: 24.13.0
+  - vulnerability: CVE-2026-21713
+    package:
+      name: node
+      version: 24.13.0
+  - vulnerability: CVE-2026-21714
+    package:
+      name: node
+      version: 24.13.0
+  - vulnerability: CVE-2026-21712
+    package:
+      name: node
+      version: 24.13.0
+  - vulnerability: CVE-2026-21715
+    package:
+      name: node
+      version: 24.13.0
+  - vulnerability: CVE-2026-21716
+    package:
+      name: node
+      version: 24.13.0
+  - vulnerability: GHSA-6w46-j5rx-g56g
+    package:
+      name: pytest
+      version: 8.4.2
   # waiting on APIM to upgrade to a secure version on pytest NHSD-APIM
   - vulnerability: GHSA-vfmq-68hx-4jfw
+    package:
+      name: lxml
+      version: 5.4.0
