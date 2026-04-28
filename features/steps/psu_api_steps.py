@@ -13,6 +13,8 @@ from methods.api.psu_api_methods import (
     check_status_updates,
 )
 from methods.api.psu_api_methods import CODING_TO_STATUS_MAP, POST_DATED_ALLOWED_CODINGS
+from features.environment import AWS_ROLES
+from methods.shared import common
 from methods.shared.common import get_auth, assert_that
 from utils.prescription_id_generator import generate_short_form_id
 from utils.random_nhs_number_generator import generate_single
@@ -84,6 +86,10 @@ def i_am_authorised_to_send_prescription_updates(context):
     if "sandbox" in env:
         return
     context.auth_token = get_auth(env, "PSU")
+    role_arn = AWS_ROLES["psu"]["role_id"]
+    if role_arn is None:
+        raise ValueError("Role ARN for 'psu' is not set in environment variables")
+    context.psu_aws_credentials = common.assume_aws_role(role_arn=role_arn, session_name="regression_tests_psu")
 
 
 @given("status updates are enabled")

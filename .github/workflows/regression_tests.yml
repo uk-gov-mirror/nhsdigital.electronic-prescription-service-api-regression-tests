@@ -44,6 +44,11 @@ on:
         type: boolean
         description: "Generate a report for successful test runs"
         default: false
+      psu_execute_lambda_role_arn:
+        description: "Optional PSU role ARN used for direct get-status-updates lambda invocation"
+        required: false
+        type: string
+        default: ""
   workflow_call:
     inputs:
       tags:
@@ -77,6 +82,11 @@ on:
         type: boolean
         description: "Generate a report for successful test runs"
         default: false
+      psu_execute_lambda_role_arn:
+        description: "Optional PSU role ARN used for direct get-status-updates lambda invocation"
+        required: false
+        type: string
+        default: ""
 
 permissions: {}
 jobs:
@@ -223,6 +233,7 @@ jobs:
           JWT_KID: ${{ secrets.JWT_KID }}
           JWT_PRIVATE_KEY: ${{ secrets.JWT_PRIVATE_KEY }}
           EPS_ASSIST_ME_ROLE_ARN: ${{ secrets.EPS_ASSIST_ME_ROLE_ARN }}
+          PSU_EXECUTE_LAMBDA_ROLE_ARN: ${{ inputs.psu_execute_lambda_role_arn }}
         run: |
           export CPT_FHIR_CLIENT_ID="$CPT_FHIR_CLIENT_ID"
           export CPT_FHIR_CLIENT_SECRET="$CPT_FHIR_CLIENT_SECRET"
@@ -248,6 +259,7 @@ jobs:
           export JWT_PRIVATE_KEY="$JWT_PRIVATE_KEY"
           export PULL_REQUEST_ID="$PULL_REQUEST_ID"
           export EPS_ASSIST_ME_ROLE_ARN="$EPS_ASSIST_ME_ROLE_ARN"
+          export PSU_EXECUTE_LAMBDA_ROLE_ARN="$PSU_EXECUTE_LAMBDA_ROLE_ARN"
           echo Pull request ID = "$PULL_REQUEST_ID"
           case "$MATRIX_TAG" in
             multiple_access)

@@ -63,6 +63,7 @@ def trigger_test_run(
     run_id,
     regression_test_repo_tag,
     regression_test_workflow_tag,
+    psu_execute_lambda_role_arn,
 ):
     body = {
         "ref": regression_test_workflow_tag,
@@ -73,6 +74,7 @@ def trigger_test_run(
             "pull_request_id": pr_label,
             "product": product,
             "github_tag": regression_test_repo_tag,
+            "psu_execute_lambda_role_arn": psu_execute_lambda_role_arn,
         },
     }
 
@@ -223,6 +225,12 @@ def main():
         default="main",
         help="Please provide the tag to for the run_regression_test workflow.",
     )
+    parser.add_argument(
+        "--psu_execute_lambda_role_arn",
+        required=False,
+        default="",
+        help="Optional PSU role ARN used for direct get-status-updates lambda invocation.",
+    )
 
     arguments = parser.parse_args()
 
@@ -246,6 +254,7 @@ def main():
         run_id,
         arguments.regression_test_repo_tag,
         arguments.regression_test_workflow_tag,
+        arguments.psu_execute_lambda_role_arn,
     )
 
     workflow_id = find_workflow(auth_header, run_id, run_date_filter)

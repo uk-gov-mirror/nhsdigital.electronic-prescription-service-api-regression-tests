@@ -95,6 +95,7 @@ CIS2_USERS = {
 
 AWS_ROLES = {
     "eps-assist-me": {"role_id": os.getenv("EPS_ASSIST_ME_ROLE_ARN")},
+    "psu": {"role_id": os.getenv("PSU_EXECUTE_LAMBDA_ROLE_ARN")},
     "cloud-formation-check": {"role_id": os.getenv("CLOUD_FORMATION_CHECK_ROLE")},
 }
 
@@ -172,6 +173,8 @@ GSUL_PREFIX = "psu"
 GSUL_SUFFIX = "get-status-updates"
 
 EPS_PRESCRIBE_DISPENSE_STACK_NAME = "prescribe-dispense{{aws_pull_request_id}}"
+PSU_STACK_NAME = "psu{{aws_pull_request_id}}"
+PSU_GET_STATUS_UPDATES_FUNCTION_ARN_EXPORT_NAME = "psu{{aws_pull_request_id}}:functions:GetStatusUpdates:FunctionArn"
 
 EPSAM_SLACKBOT_FUNCTION_EXPORT_NAME = "epsam{{aws_pull_request_id}}:lambda:SlackBot:FunctionName"
 EPSAM_STACK_NAME = "epsam{{aws_pull_request_id}}"
@@ -483,6 +486,10 @@ def get_function_export_name(context):
 
     context.espamCloudFormationStackName = EPSAM_STACK_NAME.replace("{{aws_pull_request_id}}", suffix)
     context.espamSlackBotFunctionName = EPSAM_SLACKBOT_FUNCTION_EXPORT_NAME.replace("{{aws_pull_request_id}}", suffix)
+    context.psuCloudFormationStackName = PSU_STACK_NAME.replace("{{aws_pull_request_id}}", suffix)
+    context.psuGetStatusUpdatesFunctionArnExportName = PSU_GET_STATUS_UPDATES_FUNCTION_ARN_EXPORT_NAME.replace(
+        "{{aws_pull_request_id}}", suffix
+    )
 
 
 def get_url_with_pr(context, env, product):
