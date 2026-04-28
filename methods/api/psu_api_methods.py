@@ -75,22 +75,43 @@ def _get_psu_cloudformation_client(context):
 
 
 def _get_get_status_updates_function_arn(context) -> str:
+    cached_function_arn = getattr(context, "psu_get_status_updates_function_arn", "")
+    if cached_function_arn:
+        return cached_function_arn
+
     export_name = getattr(context, "psuGetStatusUpdatesFunctionArnExportName", "")
-    if not export_name:
-        raise ValueError("PSU get-status-updates export name is not configured")
+    stack_name = getattr(context, "psuCloudFormationStackName", "")
+    if not export_name and not stack_name:
+        raise ValueError("PSU get-status-updates export name or CloudFormation stack name must be configured")
 
     client = _get_psu_cloudformation_client(context)
-    paginator = client.get_paginator("list_exports")
-    for page in paginator.paginate():
-        for export in page.get("Exports", []):
-            if export.get("Name") == export_name:
-                function_arn = export.get("Value", "")
-                if function_arn:
-                    return function_arn
 
-    raise ValueError(f"Unable to resolve PSU get-status-updates function ARN from export '{export_name}'")
+    if stack_name:
+        response = client.describe_stacks(StackName=stack_name)
+        for stack in response.get("Stacks", []):
+            for output in stack.get("Outputs", []):
+                output_value = output.get("OutputValue", "")
+                if not output_value:
+                    continue
 
+                if export_name and output.get("ExportName") == export_name:
+                    context.psu_get_status_updates_function_arn = output_value
+                    return output_value
 
+    if export_name:
+        paginator = client.get_paginator("list_exports")
+        for page in paginator.paginate():
+            for export in page.get("Exports", []):
+                if export.get("Name") == export_name:
+                    function_arn = export.get("Value", "")
+                    if function_arn:
+                        context.psu_get_status_updates_function_arn = function_arn
+                        return function_arn
+
+    if export_name:
+        raise ValueError(f"Unable to resolve PSU get-status-updates function ARN from export '{export_name}'")
+
+    raise ValueError(f"Unable to resolve PSU get-status-updates function ARN from stack '{stack_name}'")
 def _normalise_lambda_payload(lambda_payload: dict[str, Any]) -> LambdaInvocationResponse:
     status_code = int(lambda_payload.get("statusCode", 200))
     body = lambda_payload.get("body", lambda_payload)
