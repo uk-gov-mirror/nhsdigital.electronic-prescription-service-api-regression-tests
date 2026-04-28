@@ -87,8 +87,12 @@ def i_am_authorised_to_send_prescription_updates(context):
         return
     context.auth_token = get_auth(env, "PSU")
     role_arn = AWS_ROLES["psu"]["role_id"]
-    if role_arn is None:
-        raise ValueError("Role ARN for 'psu' is not set in environment variables")
+    if isinstance(role_arn, str):
+        role_arn = role_arn.strip()
+    if not role_arn:
+        raise ValueError(
+            "Role ARN for 'psu' is not configured or is blank in environment variables"
+        )
     context.psu_aws_credentials = common.assume_aws_role(role_arn=role_arn, session_name="regression_tests_psu")
 
 
