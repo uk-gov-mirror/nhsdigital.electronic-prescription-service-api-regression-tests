@@ -220,25 +220,21 @@ def advance_clock_beyond_postdated(context):
 @then("The prescription item has a coding of '{expected_coding}' with a status of '{expected_status}'")
 def verify_update_recorded(context, expected_coding, expected_status):
     if "sandbox" in context.config.userdata["env"].lower():
-        logger.debug("Skipping verification in sandbox environment")
+        print("Skipping verification in sandbox environment")
         return
 
     prescription_id = context.prescription_id
 
-    response = get_status_updates(context)
+    response = check_status_updates(context, prescription_id=prescription_id)
     assert_that(response.status_code).is_equal_to(200)
 
     response_data = json.loads(response.content)
-    matching_items = _extract_get_status_updates_items(response_data, prescription_id)
+    matching_items = [
+        items for items in response_data.get("items", []) if items.get("PrescriptionID") == prescription_id
+    ]
     if matching_items:
-        item = _select_latest_effective_item(matching_items)
-
-        # get-status-updates response shape
-        if "latestStatus" in item:
-            assert_that(item.get("latestStatus")).is_equal_to(expected_coding)
-            expected_terminal_state = expected_status.strip().lower() == "completed"
-            assert_that(item.get("isTerminalState")).is_equal_to(expected_terminal_state)
-            return
+        # Note that multiple items are possible, though not in any of our current tests
+        item = matching_items[0]
 
         assert_that(item.get("TerminalStatus")).is_equal_to(expected_status)
         assert_that(item.get("Status")).is_equal_to(expected_coding)

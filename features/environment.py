@@ -306,6 +306,12 @@ def before_feature(context, feature):
             patch_scenario_with_autoretry(scenario, max_attempts=max_attempts)
 
 
+def _set_pfp_base_url_for_scenario_tags(context, environment, scenario_tags):
+    """Override PFP base URL for mixed-product scenarios using explicit PFP tags."""
+    if "pfp_apigee" in scenario_tags:
+        context.pfp_base_url = os.path.join(select_apigee_base_url(environment.upper()), PFP_SUFFIX)
+
+
 def before_scenario(context, scenario):
     if "skip" in scenario.effective_tags:
         scenario.skip("Marked with @skip")
@@ -320,6 +326,9 @@ def before_scenario(context, scenario):
     if "only-dev" in scenario.effective_tags and environment != "internal-dev":
         scenario.skip("Marked with @only-dev, environment not internal-dev")
         return
+
+    _set_pfp_base_url_for_scenario_tags(context, environment, scenario.effective_tags)
+
     product = context.config.userdata["product"].upper()
     if product == "CPTS-UI":
         clear_scenario_user_sessions(context, scenario.effective_tags)
@@ -435,11 +444,11 @@ def before_all(context):
         context.gsul_base_url = f"https://{GSUL_PREFIX}{os.path.join(select_aws_base_url(env), GSUL_SUFFIX)}"
         context.cpts_fhir_base_url = os.path.join(select_apigee_base_url(env), CPTS_FHIR_SUFFIX)
 
-        if "PFP-PROXYGEN" in product:
-            # Don't use PFP-PROXYGEN AND PFP-APIGEE TOGETHER
-            context.pfp_base_url = os.path.join(select_apigee_base_url(env), PFP_PROXYGEN_SUFFIX)
-        else:
+        # Default to proxygen endpoint; switch to apigee only when explicitly requested.
+        if product == "PFP-APIGEE":
             context.pfp_base_url = os.path.join(select_apigee_base_url(env), PFP_SUFFIX)
+        else:
+            context.pfp_base_url = os.path.join(select_apigee_base_url(env), PFP_PROXYGEN_SUFFIX)
 
         get_function_export_name(context)
 

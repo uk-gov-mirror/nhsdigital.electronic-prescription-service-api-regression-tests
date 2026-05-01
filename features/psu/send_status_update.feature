@@ -29,6 +29,6 @@ Feature: I can send an update to PSU
     And status updates are enabled
     And I am authorised to send prescription updates
     When I send a 'Collected' update with a status of 'completed'
-    And I am authenticated with PFP-APIGEE app
+    And I am authenticated with PFP-PROXYGEN app
     And I request my prescriptions
     Then I can see my prescription and it has a status of 'completed'
