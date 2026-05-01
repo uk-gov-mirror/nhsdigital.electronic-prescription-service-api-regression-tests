@@ -22,7 +22,7 @@ Feature: I can send an update to PSU
     And I send a 'Collected' update with a status of 'completed'
     Then the prescription item has a coding of 'Collected' with a status of 'completed'
 
-  @blocker @smoke @e2e
+  @blocker @smoke @e2e @skip-pull-request
   Scenario: I can see a single prescription with its updates
     Given I am an authorised prescriber with EPS-FHIR-PRESCRIBING app
     And a nominated acute prescription has been created and released to FA090

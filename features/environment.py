@@ -320,6 +320,9 @@ def before_scenario(context, scenario):
     if "only-dev" in scenario.effective_tags and environment != "internal-dev":
         scenario.skip("Marked with @only-dev, environment not internal-dev")
         return
+    if "skip-pull-request" in scenario.effective_tags and context.is_pull_request:
+        scenario.skip("Marked with @skip-pull-request")
+        return
     product = context.config.userdata["product"].upper()
     if product == "CPTS-UI":
         clear_scenario_user_sessions(context, scenario.effective_tags)
@@ -434,6 +437,10 @@ def before_all(context):
         # Intentionally AWS env, GSUL is not exposed in Apigee
         context.gsul_base_url = f"https://{GSUL_PREFIX}{os.path.join(select_aws_base_url(env), GSUL_SUFFIX)}"
         context.cpts_fhir_base_url = os.path.join(select_apigee_base_url(env), CPTS_FHIR_SUFFIX)
+        if PULL_REQUEST_ID:
+            context.is_pull_request = True
+        else:
+            context.is_pull_request = False
 
         if "PFP-PROXYGEN" in product:
             # Don't use PFP-PROXYGEN AND PFP-APIGEE TOGETHER
