@@ -8,7 +8,7 @@ permissions: {}
 
 jobs:
   get_config_values:
-    uses: NHSDigital/eps-common-workflows/.github/workflows/get-repo-config.yml@76baf9dd964311c337af3ec78e8cb1e915c006ce
+    uses: NHSDigital/eps-common-workflows/.github/workflows/get-repo-config.yml@b83cff6a2951a8a2951b8c00a7734edd0cc832d3
     permissions:
       attestations: read
       contents: read
